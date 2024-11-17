@@ -39,7 +39,7 @@ public class SpigotUpdater implements Runnable, Listener {
     @Override
     public void run() {
         String myVersion = SuperbVote.getPlugin().getDescription().getVersion();
-        if (myVersion.endsWith("-SNAPSHOT")) {
+        if (myVersion.endsWith("-SNAPSHOT") || myVersion.endsWith("-CORP")) {
             // Nothing to do.
             return;
         }
