@@ -7,12 +7,12 @@ import io.minimum.minecraft.superbvote.SuperbVote;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Value;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.bukkit.Bukkit;
-
-import java.util.UUID;
 
 @Value
 public class PlayerVotes {
@@ -34,15 +34,32 @@ public class PlayerVotes {
     public enum Type {
         CURRENT,
         FUTURE;
+
+    }
+    public boolean hasVoteOnSameDay(String serviceName, Date voteDate) {
+        Date lastVoteDate = lastVotes.get(serviceName);
+        if (lastVoteDate == null) {
+            return false;
+        }
+        if (lastVoteDate.equals(voteDate)) {
+            // the new vote is just about being processed right now
+            return false;
+        }
+        return DateUtils.isSameDay(lastVoteDate, voteDate);
     }
 
-    public boolean hasVoteOnSameDay(String serviceName, Date voteDate) {
-        return DateUtils.isSameDay(lastVotes.get(serviceName), voteDate);
+    public void updateLastVotes(String serviceName, Date voteReceived) {
+        lastVotes.put(serviceName, voteReceived);
     }
 
     public String getSerializedLastVotes() {
         try {
-            return OBJECT_MAPPER.writeValueAsString(lastVotes);
+            Map<String, Date> preprocessed = new HashMap<>();
+            for (Map.Entry<String, Date> entry : lastVotes.entrySet()) {
+                long dateSeconds = entry.getValue().getTime() / 1000;
+                preprocessed.put(entry.getKey(), new Date(dateSeconds));
+            }
+            return OBJECT_MAPPER.writeValueAsString(preprocessed);
         } catch (JsonProcessingException e) {
             SuperbVote.getPlugin()
                     .getLogger()
@@ -51,12 +68,15 @@ public class PlayerVotes {
         }
     }
 
-    public static HashMap<String, Date> deserializeLastVotes(String lastVotesString) {
+    public static Map<String, Date> deserializeLastVotes(String lastVotesString) {
         if (StringUtils.isBlank(lastVotesString)) {
             return new HashMap<>();
         }
         try {
-            return OBJECT_MAPPER.readValue(lastVotesString, new TypeReference<>() {});
+            Map<String, Long> lastVotes = OBJECT_MAPPER.readValue(lastVotesString, new TypeReference<>() {});
+            return lastVotes.entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> new Date(e.getValue() * 1000)));
         } catch (JsonProcessingException e) {
             SuperbVote.getPlugin()
                     .getLogger()

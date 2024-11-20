@@ -47,10 +47,8 @@ public class SuperbVoteListener implements Listener {
 
             VoteStorage voteStorage = SuperbVote.getPlugin().getVoteStorage();
             PlayerVotes pvCurrent = voteStorage.getVotes(op.getUniqueId());
-            Map<String, Date> lastVotes = new HashMap<>(pvCurrent.getLastVotes());
-            lastVotes.put(vote.getServiceName(), vote.getReceived());
             PlayerVotes pv = new PlayerVotes(op.getUniqueId(), op.getName(), pvCurrent.getVotes() + 1,
-                    lastVotes, PlayerVotes.Type.FUTURE);
+                    pvCurrent.getLastVotes(), PlayerVotes.Type.FUTURE);
 
             VoteStreak voteStreak = voteStorage.getVoteStreakIfSupported(op.getUniqueId(), false);
             if (!vote.isFakeVote()) {
@@ -101,10 +99,11 @@ public class SuperbVoteListener implements Listener {
             SuperbVote.getPlugin()
                     .getLogger()
                     .log(Level.INFO, "Discarding vote: " + vote.getName() +
-                            " already received a vote the same day at " + vote.getReceived() +
+                            " already received a vote the same day at " + pv.getLastVotes().get(vote.getServiceName()) +
                             " for service:" + vote.getServiceName());
             return;
         }
+        pv.updateLastVotes(vote.getServiceName(), vote.getReceived());
         if (queue) {
             if (!SuperbVote.getPlugin().getConfiguration().shouldQueueVotes()) {
                 SuperbVote.getPlugin().getLogger().log(Level.WARNING, "Ignoring vote from " + vote.getName() + " (service:" +
@@ -158,10 +157,9 @@ public class SuperbVoteListener implements Listener {
             if (!votes.isEmpty()) {
                 for (Vote vote : votes) {
                     processVote(pv, voteStreak, vote, false, false, true);
-                    Map<String, Date> lastVotes = new HashMap<>(pv.getLastVotes());
-                    lastVotes.put(vote.getServiceName(), vote.getReceived());
                     pv = new PlayerVotes(pv.getUuid(), event.getPlayer().getName(),pv.getVotes() + 1,
-                            lastVotes, PlayerVotes.Type.CURRENT);
+                            pv.getLastVotes(), PlayerVotes.Type.CURRENT);
+                    pv.updateLastVotes(vote.getServiceName(), vote.getReceived());
                 }
                 afterVoteProcessing();
             }
